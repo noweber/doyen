@@ -1,5 +1,8 @@
 ﻿using Doyen.API.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Doyen.API.Controllers
 {
@@ -7,6 +10,7 @@ namespace Doyen.API.Controllers
     [ApiController]
     public class ExpertsController : ControllerBase
     {
+        // TODO: No content / not found status code
         // TODO: Add pagination
         [HttpGet("search")]
         [ProducesDefaultResponseType]
@@ -14,7 +18,7 @@ namespace Doyen.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<Expert>> GetExpertsSearch([FromRoute] string keywords)
+        public ActionResult<List<Expert>> GetExpertsSearch([FromQuery] string keywords)
         {
             var results = new List<Expert>()
             {
@@ -30,8 +34,10 @@ namespace Doyen.API.Controllers
             {
                 results.Add(CreateRandomExpert());
             }
-
-            return new ActionResult<List<Expert>>(results);
+            return new JsonResult(
+        results,
+        new JsonSerializerOptions { PropertyNamingPolicy = null });
+            //return new ActionResult<List<Expert>>(results);
         }
 
         [HttpGet("{identifier}")]

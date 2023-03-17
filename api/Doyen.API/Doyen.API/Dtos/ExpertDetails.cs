@@ -2,6 +2,6 @@
 {
     public class ExpertDetails : Expert
     {
-        public string? LastKnownInstitution;
+        public string? LastKnownInstitution { get; set; }
     }
 }
