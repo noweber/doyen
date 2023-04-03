@@ -16,7 +16,7 @@ namespace Doyen.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<Expert>> GetExpertsSearch([FromQuery] string keywords, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+        public ActionResult<List<Expert>> GetExpertsSearch([FromQuery] string keywords, [FromQuery] string? luceneFilter = null, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
         {
             if (!AreLimitAndOffsetValid(limit, offset))
             {
