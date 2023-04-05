@@ -14,9 +14,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Elasticsearch.Net" Version="7.17.5" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.4" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.2" />
+    <PackageReference Include="NEST" Version="7.17.5" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Dtos\Authors\" />
   </ItemGroup>
 
 </Project>

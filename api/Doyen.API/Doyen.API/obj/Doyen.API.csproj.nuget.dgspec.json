@@ -1,23 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\noweb\\source\\repos\\doyen\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj": {}
+    "C:\\Projects\\doyen-weber\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\noweb\\source\\repos\\doyen\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj": {
+    "C:\\Projects\\doyen-weber\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\noweb\\source\\repos\\doyen\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj",
+        "projectUniqueName": "C:\\Projects\\doyen-weber\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj",
         "projectName": "Doyen.API",
-        "projectPath": "C:\\Users\\noweb\\source\\repos\\doyen\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj",
-        "packagesPath": "C:\\Users\\noweb\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\noweb\\source\\repos\\doyen\\api\\Doyen.API\\Doyen.API\\obj\\",
+        "projectPath": "C:\\Projects\\doyen-weber\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj",
+        "packagesPath": "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\",
+        "outputPath": "C:\\Projects\\doyen-weber\\api\\Doyen.API\\Doyen.API\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
           "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
         ],
         "configFilePaths": [
-          "C:\\Users\\noweb\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Nicholas Owen Weber\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -43,6 +45,10 @@
         "net7.0": {
           "targetAlias": "net7.0",
           "dependencies": {
+            "Elasticsearch.Net": {
+              "target": "Package",
+              "version": "[7.17.5, )"
+            },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[7.0.4, )"
@@ -50,6 +56,10 @@
             "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
               "target": "Package",
               "version": "[1.17.2, )"
+            },
+            "NEST": {
+              "target": "Package",
+              "version": "[7.17.5, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
