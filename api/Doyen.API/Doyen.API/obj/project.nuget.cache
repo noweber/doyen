@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "nKKtE9TIS0esfQktHaK1IUVNgbs5AxH9RVfPbHa4n8QvbrYW0wulnAPreiThH4VyGsVEAzJ/NJhOdmuaVZCj5A==",
+  "dgSpecHash": "Dg8s6h5QTBAitKaSAo0wpkknUqSa44C5mRidtvR7OkqHyZ2/YJFszGiHcming4g8hE2V7YtUZyISV8gH1/KmkA==",
   "success": true,
   "projectFilePath": "C:\\Projects\\doyen-weber\\api\\Doyen.API\\Doyen.API\\Doyen.API.csproj",
   "expectedPackageFiles": [
@@ -11,6 +11,7 @@
     "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\microsoft.openapi\\1.4.3\\microsoft.openapi.1.4.3.nupkg.sha512",
     "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\microsoft.visualstudio.azure.containers.tools.targets\\1.17.2\\microsoft.visualstudio.azure.containers.tools.targets.1.17.2.nupkg.sha512",
     "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\nest\\7.17.5\\nest.7.17.5.nupkg.sha512",
+    "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
     "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\swashbuckle.aspnetcore\\6.4.0\\swashbuckle.aspnetcore.6.4.0.nupkg.sha512",
     "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\6.4.0\\swashbuckle.aspnetcore.swagger.6.4.0.nupkg.sha512",
     "C:\\Users\\Nicholas Owen Weber\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\6.4.0\\swashbuckle.aspnetcore.swaggergen.6.4.0.nupkg.sha512",

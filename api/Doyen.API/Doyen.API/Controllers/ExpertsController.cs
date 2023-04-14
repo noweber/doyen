@@ -1,6 +1,6 @@
 ﻿using Doyen.API.Dtos;
-using Doyen.API.Elasticsearch;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System.Text.Json;
 
 namespace Doyen.API.Controllers
@@ -9,52 +9,122 @@ namespace Doyen.API.Controllers
     [ApiController]
     public class ExpertsController : ControllerBase
     {
-        // TODO: [FromQuery] string? luceneFilter = null,
-        // TODO: No content / not found status code
-        // TODO: Add pagination
         [HttpGet("search")]
         [ProducesDefaultResponseType]
-        //[ProducesResponseType(typeof(List<Expert>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<Expert>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<Expert>> GetExpertsSearch([FromQuery] string keywords, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+        public async Task<ActionResult<List<Expert>>> GetExpertsSearchAsync([FromQuery] string keywords, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
         {
             if (!AreLimitAndOffsetValid(limit, offset))
             {
                 return BadRequest();
             }
+            // Success:
+            var httpClientHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+            var client = new HttpClient(httpClientHandler);
 
-            /*ElasticsearchRepository objSearch = new ElasticsearchRepository();
-            var results = objSearch.GetPublicationsByKeywords(keywords);
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:9200/pubmed-paper-index/_search?typed_keys=true");
+            request.Headers.Add("Authorization", "Basic ZWxhc3RpYzpfUXFacEJBNEMyUmRQSUVoVytndA==");
+
+            var content = new StringContent("{\r\n    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
+            request.Content = content;
+
+            var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var responseJson = await response.Content.ReadAsStringAsync();
+            //dynamic responseObject = JsonSerializer.Deserialize<dynamic>(responseJson);
+            List<Expert> experts = new List<Expert>();
+            dynamic responseObject = JObject.Parse(responseJson);
+            dynamic hits = responseObject.hits.hits;
+            foreach (var subhit in hits)
+            {
+                foreach (var author in subhit._source.authors)
+                {
+                    string firstName = author.first_name;
+                    string lastName = author.last_name;
+                    string identifier = author.identifier;
+                    var expert = new Expert(firstName, lastName, identifier);
+                    experts.Add(expert);
+                }
+            }
+
             return new JsonResult(
-            results,
-            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
+                experts,
+                new JsonSerializerOptions { PropertyNamingPolicy = null }
+            );
 
-            List<Expert> results = GetCovidExperts();
-            return new JsonResult(
-            results,
-            new JsonSerializerOptions { PropertyNamingPolicy = null });
 
+            var elasticsearchUrl = "http://localhost:9200";
+            var username = "elastic";
+            var password = "_QqZpBA4C2RdPIEhW+gt";
+            var indexName = "pubmed-paper-index";
 
             /*
-            var results = new List<Expert>()
-            {
-                new Expert()
-                {
-                    Identifier = Guid.NewGuid(),
-                    Name = "Dr. Doyen"
-                },
-
-             };
-
-            for (int i = 0; i < 4; i++)
-            {
-                results.Add(CreateRandomExpert());
-            }
+            var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:9200/pubmed-paper-index/_search?typed_keys=true");
+            request.Headers.Add("Authorization", "Basic ZWxhc3RpYzpfUXFacEJBNEMyUmRQSUVoVytndA==");
+            var content = new StringContent("{\r\n    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"Covid cough classification by audio\"\r\n        }\r\n    }\r\n}", null, "application/json");
+            request.Content = content;
+            var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            Console.WriteLine(await response.Content.ReadAsStringAsync());
             return new JsonResult(
-        results,
-        new JsonSerializerOptions { PropertyNamingPolicy = null });*/
+            response,
+            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
+
+            // Failed Attempt:
+            /*var queryJson = $"{{\r\n  \"query\": {{\r\n\t\"simple_query_string\": {{\r\n\t  \"default_operator\": \"and\",\r\n\t\t\"fields\": [\r\n\t\t  \"title\",\r\n\t\t  \"abstract\",\r\n\t\t  \"mesh_annotations.text\"\r\n\t\t],\r\n\t\t  \"query\": \"{keywords}\"\r\n\t}}\r\n  }}\r\n}}";
+            var response = await ElasticsearchQuery.Search(elasticsearchUrl, indexName, queryJson, username, password);
+            return new JsonResult(
+            response,
+            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
+
+            // Failed Attempt:
+            /*
+            var pool = new SingleNodeConnectionPool(new Uri(elasticsearchUrl));
+            var settings = new ConnectionSettings(pool)
+            .DefaultIndex(indexName)
+            .CertificateFingerprint("50:C3:A1:B5:3D:DB:15:AA:16:3F:B5:5C:61:B2:5B:41:DC:56:FC:D4:71:67:3D:FB:6E:A8:DF:A6:32:71:45:6E")
+            .BasicAuthentication("elastic", "_QqZpBA4C2RdPIEhW+gt")
+            .ServerCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) => true)
+            .EnableApiVersioningHeader();
+
+            var client = new ElasticClient(settings);
+
+            // Query DSL
+            var queryDSL = @"
+            {
+              ""query"": {
+                ""simple_query_string"": {
+                  ""default_operator"": ""and"",
+                  ""fields"": [
+                    ""title"",
+                    ""abstract"",
+                    ""mesh_annotations.text""
+                  ],
+                  ""query"": ""Covid cough classification by audio""
+                }
+              }
+            }";
+
+            // Elasticsearch search request
+            var searchRequest = new SearchRequest<PubmedIndexDocument>(indexName)
+            {
+                Query = JsonConvert.DeserializeObject<QueryContainer>(queryDSL)
+            };
+
+            // Elasticsearch search response
+            var searchResponse = client.Search<PubmedIndexDocument>(searchRequest);
+            
+            var response = searchResponse.Documents;
+            return new JsonResult(
+            response,
+            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
         }
 
         [HttpGet("{identifier}")]
@@ -113,6 +183,7 @@ namespace Doyen.API.Controllers
             };
             return results;
         }
+
         private Expert CreateRandomExpert()
         {
             return new Expert("Expert", Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
