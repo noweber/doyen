@@ -1,14 +1,24 @@
 ﻿using Doyen.API.Dtos;
+using Doyen.API.Elasticsearch.Settings;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace Doyen.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ExpertsController : ControllerBase
+    public sealed class ExpertsController : ControllerBase
     {
+        private readonly IElasticsearchSettings settings;
+
+        public ExpertsController(IElasticsearchSettings elasticsearchSettings)
+        {
+            settings = elasticsearchSettings;
+        }
+
         [HttpGet("search")]
         [ProducesDefaultResponseType]
         [ProducesResponseType(typeof(List<Expert>), StatusCodes.Status200OK)]
@@ -21,23 +31,29 @@ namespace Doyen.API.Controllers
             {
                 return BadRequest();
             }
-            // Success:
+            
+
+            // TODO: Move HTTP client code into a service class and inject it as a dependency into the controller.
             var httpClientHandler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
             };
             var client = new HttpClient(httpClientHandler);
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:9200/pubmed-paper-index/_search?typed_keys=true");
-            request.Headers.Add("Authorization", "Basic ZWxhc3RpYzpfUXFacEJBNEMyUmRQSUVoVytndA==");
-
+            string username = settings.Username;
+            string password = settings.Password;
+            string credentials = $"{username}:{password}";
+            byte[] bytes = Encoding.UTF8.GetBytes(credentials);
+            string encoded = Convert.ToBase64String(bytes);
+            string authorizationHeader = $"Basic {encoded}";
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
+            var request = new HttpRequestMessage(HttpMethod.Post, settings.Url);
             var content = new StringContent("{\r\n    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
             request.Content = content;
-
             var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseJson = await response.Content.ReadAsStringAsync();
-            //dynamic responseObject = JsonSerializer.Deserialize<dynamic>(responseJson);
+
+            // TODO: Create a strongly type POCO to match the Elasticsearch index document.
             List<Expert> experts = new List<Expert>();
             dynamic responseObject = JObject.Parse(responseJson);
             dynamic hits = responseObject.hits.hits;
@@ -57,74 +73,6 @@ namespace Doyen.API.Controllers
                 experts,
                 new JsonSerializerOptions { PropertyNamingPolicy = null }
             );
-
-
-            var elasticsearchUrl = "http://localhost:9200";
-            var username = "elastic";
-            var password = "_QqZpBA4C2RdPIEhW+gt";
-            var indexName = "pubmed-paper-index";
-
-            /*
-            var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:9200/pubmed-paper-index/_search?typed_keys=true");
-            request.Headers.Add("Authorization", "Basic ZWxhc3RpYzpfUXFacEJBNEMyUmRQSUVoVytndA==");
-            var content = new StringContent("{\r\n    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"Covid cough classification by audio\"\r\n        }\r\n    }\r\n}", null, "application/json");
-            request.Content = content;
-            var response = await client.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            Console.WriteLine(await response.Content.ReadAsStringAsync());
-            return new JsonResult(
-            response,
-            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
-
-            // Failed Attempt:
-            /*var queryJson = $"{{\r\n  \"query\": {{\r\n\t\"simple_query_string\": {{\r\n\t  \"default_operator\": \"and\",\r\n\t\t\"fields\": [\r\n\t\t  \"title\",\r\n\t\t  \"abstract\",\r\n\t\t  \"mesh_annotations.text\"\r\n\t\t],\r\n\t\t  \"query\": \"{keywords}\"\r\n\t}}\r\n  }}\r\n}}";
-            var response = await ElasticsearchQuery.Search(elasticsearchUrl, indexName, queryJson, username, password);
-            return new JsonResult(
-            response,
-            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
-
-            // Failed Attempt:
-            /*
-            var pool = new SingleNodeConnectionPool(new Uri(elasticsearchUrl));
-            var settings = new ConnectionSettings(pool)
-            .DefaultIndex(indexName)
-            .CertificateFingerprint("50:C3:A1:B5:3D:DB:15:AA:16:3F:B5:5C:61:B2:5B:41:DC:56:FC:D4:71:67:3D:FB:6E:A8:DF:A6:32:71:45:6E")
-            .BasicAuthentication("elastic", "_QqZpBA4C2RdPIEhW+gt")
-            .ServerCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) => true)
-            .EnableApiVersioningHeader();
-
-            var client = new ElasticClient(settings);
-
-            // Query DSL
-            var queryDSL = @"
-            {
-              ""query"": {
-                ""simple_query_string"": {
-                  ""default_operator"": ""and"",
-                  ""fields"": [
-                    ""title"",
-                    ""abstract"",
-                    ""mesh_annotations.text""
-                  ],
-                  ""query"": ""Covid cough classification by audio""
-                }
-              }
-            }";
-
-            // Elasticsearch search request
-            var searchRequest = new SearchRequest<PubmedIndexDocument>(indexName)
-            {
-                Query = JsonConvert.DeserializeObject<QueryContainer>(queryDSL)
-            };
-
-            // Elasticsearch search response
-            var searchResponse = client.Search<PubmedIndexDocument>(searchRequest);
-            
-            var response = searchResponse.Documents;
-            return new JsonResult(
-            response,
-            new JsonSerializerOptions { PropertyNamingPolicy = null });*/
         }
 
         [HttpGet("{identifier}")]
@@ -160,28 +108,6 @@ namespace Doyen.API.Controllers
             }
 
             return new ActionResult<List<Expert>>(results);
-        }
-
-        private List<Expert> GetCovidExperts()
-        {
-            List<Expert> results = new List<Expert>()
-            {
-                new Expert("Conor", "Wall", "0000-0001-6674-692X"),
-                new Expert("Li", "Zhang", "0000-0003-4263-7168"),
-                new Expert("Yonghong", "Yu", null),
-                new Expert("Akshi", "Kumar", null),
-                new Expert("Rong", "Gao", null),
-
-                new Expert("Santosh", "Kumar", null),
-                new Expert("Mithilesh Kumar", "Chaube", null),
-                new Expert("Saeed Hamood", "Alsamhi", null),
-                new Expert("Sachin Kumar", "Gupta", null),
-                new Expert("Mohsen", "Guizani", null),
-                new Expert("Raffaele", "Gravina", null),
-                new Expert("Giancarlo", "Fortino", null),
-
-            };
-            return results;
         }
 
         private Expert CreateRandomExpert()
