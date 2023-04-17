@@ -5,8 +5,11 @@ C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Doyen.API.deps.
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Doyen.API.runtimeconfig.json
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Doyen.API.dll
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Doyen.API.pdb
+C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Elasticsearch.Net.dll
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Microsoft.AspNetCore.OpenApi.dll
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Microsoft.OpenApi.dll
+C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Nest.dll
+C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Newtonsoft.Json.dll
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Swashbuckle.AspNetCore.SwaggerUI.dll
@@ -31,6 +34,3 @@ C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\obj\Debug\net7.0\refint\Doyen.AP
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\obj\Debug\net7.0\Doyen.API.pdb
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\obj\Debug\net7.0\Doyen.API.genruntimeconfig.cache
 C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\obj\Debug\net7.0\ref\Doyen.API.dll
-C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Newtonsoft.Json.dll
-C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Elasticsearch.Net.dll
-C:\Projects\doyen-weber\api\Doyen.API\Doyen.API\bin\Debug\net7.0\Nest.dll
