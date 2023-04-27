@@ -2,6 +2,7 @@
 using Doyen.API.Elasticsearch.Settings;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -21,58 +22,98 @@ namespace Doyen.API.Controllers
 
         [HttpGet("search")]
         [ProducesDefaultResponseType]
-        [ProducesResponseType(typeof(List<Expert>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<ExpertMetrics>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<List<Expert>>> GetExpertsSearchAsync([FromQuery] string keywords, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+        public async Task<ActionResult<List<ExpertMetrics>>> GetExpertsSearchAsync([FromQuery] string keywords, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
         {
-            if (!AreLimitAndOffsetValid(limit, offset))
+            try
             {
-                return BadRequest();
-            }
-            
 
-            // TODO: Move HTTP client code into a service class and inject it as a dependency into the controller.
-            var httpClientHandler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-            };
-            var client = new HttpClient(httpClientHandler);
-            string username = settings.Username;
-            string password = settings.Password;
-            string credentials = $"{username}:{password}";
-            byte[] bytes = Encoding.UTF8.GetBytes(credentials);
-            string encoded = Convert.ToBase64String(bytes);
-            string authorizationHeader = $"Basic {encoded}";
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
-            var request = new HttpRequestMessage(HttpMethod.Post, settings.Url);
-            var content = new StringContent("{\r\n    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
-            request.Content = content;
-            var response = await client.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            var responseJson = await response.Content.ReadAsStringAsync();
-
-            // TODO: Create a strongly type POCO to match the Elasticsearch index document.
-            List<Expert> experts = new List<Expert>();
-            dynamic responseObject = JObject.Parse(responseJson);
-            dynamic hits = responseObject.hits.hits;
-            foreach (var subhit in hits)
-            {
-                foreach (var author in subhit._source.authors)
+                if (!AreLimitAndOffsetValid(limit, offset))
                 {
-                    string firstName = author.first_name;
-                    string lastName = author.last_name;
-                    string identifier = author.identifier;
-                    var expert = new Expert(firstName, lastName, identifier);
-                    experts.Add(expert);
+                    return BadRequest();
                 }
-            }
 
-            return new JsonResult(
-                experts,
-                new JsonSerializerOptions { PropertyNamingPolicy = null }
-            );
+                // TODO: Move HTTP client code into a service class and inject it as a dependency into the controller.
+                var httpClientHandler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+                var client = new HttpClient(httpClientHandler);
+                string username = settings.Username;
+                string password = settings.Password;
+                string credentials = $"{username}:{password}";
+                byte[] bytes = Encoding.UTF8.GetBytes(credentials);
+                string encoded = Convert.ToBase64String(bytes);
+                string authorizationHeader = $"Basic {encoded}";
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
+                var request = new HttpRequestMessage(HttpMethod.Post, settings.Url);
+                var content = new StringContent("{\r\n \"size\": " + limit + ",    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
+                request.Content = content;
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var responseJson = await response.Content.ReadAsStringAsync();
+
+                dynamic responseObject = JObject.Parse(responseJson);
+                dynamic hits = responseObject.hits.hits;
+
+                Dictionary<string, ExpertMetrics> experts = new();
+                foreach (var subhit in hits)
+                {
+                    foreach (var author in subhit._source.authors)
+                    {
+                        string firstName = author.first_name;
+                        string lastName = author.last_name;
+                        string identifier = author.identifier;
+                        string key = firstName + ":" + lastName;
+                        if (!string.IsNullOrEmpty(identifier))
+                        {
+                            key += ":" + identifier;
+                        }
+
+
+                        string score = subhit._score;
+                        score = score[1..^1];
+                        float relevancy = float.Parse(score, CultureInfo.InvariantCulture);
+
+                        if (experts.ContainsKey(key))
+                        {
+                            experts[key].AddToRelevancySum(relevancy);
+                            experts[key].IncrementPublicationsCount();
+                        }
+                        else
+                        {
+                            var expert = new ExpertMetrics(firstName, lastName, identifier);
+                            if (experts.TryAdd(key, expert))
+                            {
+                                if (subhit._score != null)
+                                {
+                                    experts[key].AddToRelevancySum(relevancy);
+                                }
+
+                                experts[key].IncrementPublicationsCount();
+                            }
+                        }
+                    }
+
+                }
+                List<ExpertMetrics> results = new List<ExpertMetrics>();
+                foreach (var expert in experts)
+                {
+                    results.Add(expert.Value);
+                }
+
+                return new JsonResult(
+                    results,
+                    new JsonSerializerOptions { PropertyNamingPolicy = null }
+                );
+            }
+            catch (Exception)
+            {
+                return StatusCode(500);
+            }
         }
 
         [HttpGet("{identifier}")]
