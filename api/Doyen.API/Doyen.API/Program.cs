@@ -1,4 +1,6 @@
 using Doyen.API;
+using Doyen.API.Logging;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
@@ -48,7 +50,15 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Dependency Injection
+
+// Elasticsearch Dependencies:
 builder.Services.AddSingleton(Startup.GetElasticsearchSettings(builder));
+
+// Configure Application Insights Dependencies:
+string applicationInsightsInstrumentationKey = builder.Configuration.GetSection("ApplicationInsights")["InstrumentationKey"];
+builder.Services.AddApplicationInsightsTelemetry(applicationInsightsInstrumentationKey);
+TelemetryConfiguration telemetryConfiguration = new TelemetryConfiguration(applicationInsightsInstrumentationKey);
+builder.Services.AddScoped<ITraceLogger, ApplicationInsightsLogger>(context => new ApplicationInsightsLogger(telemetryConfiguration));
 
 var app = builder.Build();
 app.UseSwagger();

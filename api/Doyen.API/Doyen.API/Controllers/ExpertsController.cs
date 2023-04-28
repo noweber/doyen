@@ -1,5 +1,6 @@
 ﻿using Doyen.API.Dtos;
 using Doyen.API.Elasticsearch.Settings;
+using Doyen.API.Logging;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
@@ -15,9 +16,12 @@ namespace Doyen.API.Controllers
     {
         private readonly IElasticsearchSettings settings;
 
-        public ExpertsController(IElasticsearchSettings elasticsearchSettings)
+        private readonly ITraceLogger logger;
+
+        public ExpertsController(IElasticsearchSettings elasticsearchSettings, ITraceLogger traceLogger)
         {
-            settings = elasticsearchSettings;
+            settings = elasticsearchSettings ?? throw new ArgumentNullException(nameof(elasticsearchSettings));
+            logger = traceLogger ?? throw new ArgumentNullException(nameof(traceLogger));
         }
 
         [HttpGet("search")]
@@ -30,7 +34,6 @@ namespace Doyen.API.Controllers
         {
             try
             {
-
                 if (!AreLimitAndOffsetValid(limit, offset))
                 {
                     return BadRequest();
@@ -110,8 +113,9 @@ namespace Doyen.API.Controllers
                     new JsonSerializerOptions { PropertyNamingPolicy = null }
                 );
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                logger.TraceException(exception);
                 return StatusCode(500);
             }
         }
@@ -123,8 +127,16 @@ namespace Doyen.API.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<ExpertDetails> GetExpertById([FromRoute] string identifier)
         {
-            var expert = CreateRandomExpert();
-            return new ActionResult<ExpertDetails>(new ExpertDetails(expert.Name, expert.Identifier.ToString(), "Institution " + Guid.NewGuid().ToString()));
+            try
+            {
+                var expert = CreateRandomExpert();
+                return new ActionResult<ExpertDetails>(new ExpertDetails(expert.Name, expert.Identifier.ToString(), "Institution " + Guid.NewGuid().ToString()));
+            }
+            catch (Exception exception)
+            {
+                logger.TraceException(exception);
+                return StatusCode(500);
+            }
         }
 
         // TODO: Pagination
@@ -136,19 +148,27 @@ namespace Doyen.API.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<List<Expert>> GetCollaboratorsForExpertById([FromRoute] string identifier, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
         {
-            if (!AreLimitAndOffsetValid(limit, offset))
+            try
             {
-                return BadRequest();
+                if (!AreLimitAndOffsetValid(limit, offset))
+                {
+                    return BadRequest();
+                }
+
+                var results = new List<Expert>();
+
+                for (int i = 0; i < 4; i++)
+                {
+                    results.Add(CreateRandomExpert());
+                }
+
+                return new ActionResult<List<Expert>>(results);
             }
-
-            var results = new List<Expert>();
-
-            for (int i = 0; i < 4; i++)
+            catch (Exception exception)
             {
-                results.Add(CreateRandomExpert());
+                logger.TraceException(exception);
+                return StatusCode(500);
             }
-
-            return new ActionResult<List<Expert>>(results);
         }
 
         private Expert CreateRandomExpert()
