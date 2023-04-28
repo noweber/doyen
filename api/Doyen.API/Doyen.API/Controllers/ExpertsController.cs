@@ -67,33 +67,36 @@ namespace Doyen.API.Controllers
                             string firstName = author.first_name;
                             string lastName = author.last_name;
                             string identifier = author.identifier;
-                            string key = firstName + ":" + lastName;
-                            if (!string.IsNullOrEmpty(identifier))
+                            if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
                             {
-                                key += ":" + identifier;
-                            }
-
-
-                            string score = subhit._score;
-                            score = score[1..^1];
-                            float relevancy = float.Parse(score, CultureInfo.InvariantCulture);
-
-                            if (experts.ContainsKey(key))
-                            {
-                                experts[key].AddToRelevancySum(relevancy);
-                                experts[key].IncrementPublicationsCount();
-                            }
-                            else
-                            {
-                                var expert = new ExpertMetrics(firstName, lastName, identifier);
-                                if (experts.TryAdd(key, expert))
+                                string key = firstName + ":" + lastName;
+                                if (!string.IsNullOrEmpty(identifier))
                                 {
-                                    if (subhit._score != null)
-                                    {
-                                        experts[key].AddToRelevancySum(relevancy);
-                                    }
+                                    key += ":" + identifier;
+                                }
 
+
+                                string score = subhit._score;
+                                score = score[1..^1];
+                                float relevancy = float.Parse(score, CultureInfo.InvariantCulture);
+
+                                if (experts.ContainsKey(key))
+                                {
+                                    experts[key].AddToRelevancySum(relevancy);
                                     experts[key].IncrementPublicationsCount();
+                                }
+                                else
+                                {
+                                    var expert = new ExpertMetrics(firstName, lastName, identifier);
+                                    if (experts.TryAdd(key, expert))
+                                    {
+                                        if (subhit._score != null)
+                                        {
+                                            experts[key].AddToRelevancySum(relevancy);
+                                        }
+
+                                        experts[key].IncrementPublicationsCount();
+                                    }
                                 }
                             }
                         }
