@@ -110,11 +110,11 @@ namespace Doyen.API.Controllers
                     switch (searchQuery.OrderBy)
                     {
                         case SearchResultsOrdering.Relevancy:
-                            results.Sort((p1, p2) => p1.RelevancySum.CompareTo(p2.RelevancySum));
+                            results.Sort((p1, p2) => p2.RelevancySum.CompareTo(p1.RelevancySum));
                             break;
                         case SearchResultsOrdering.Publications:
                         default:
-                            results.Sort((p1, p2) => p1.PublicationsCount.CompareTo(p2.PublicationsCount));
+                            results.Sort((p1, p2) => p2.PublicationsCount.CompareTo(p1.PublicationsCount));
                             break;
                     }
 
