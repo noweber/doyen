@@ -1,6 +1,7 @@
 ﻿using Doyen.API.Dtos;
 using Doyen.API.Elasticsearch.Settings;
 using Doyen.API.Logging;
+using Doyen.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
@@ -30,21 +31,16 @@ namespace Doyen.API.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<List<ExpertMetrics>>> GetExpertsSearchAsync([FromQuery] string keywords, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+        public async Task<ActionResult<List<ExpertMetrics>>> GetExpertsSearchAsync([FromQuery] SearchModel searchQuery, [FromQuery] PaginationModel limitOffset)
         {
             try
             {
-                if (!AreLimitAndOffsetValid(limit, offset))
-                {
-                    return BadRequest();
-                }
-
                 // TODO: Move HTTP client code into a service class and inject it as a dependency into the controller.
-                var httpClientHandler = new HttpClientHandler
+                using HttpClientHandler httpClientHandler = new()
                 {
                     ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 };
-                var client = new HttpClient(httpClientHandler);
+                using HttpClient client = new(httpClientHandler);
                 string username = settings.Username;
                 string password = settings.Password;
                 string credentials = $"{username}:{password}";
@@ -52,66 +48,94 @@ namespace Doyen.API.Controllers
                 string encoded = Convert.ToBase64String(bytes);
                 string authorizationHeader = $"Basic {encoded}";
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
-                var request = new HttpRequestMessage(HttpMethod.Post, settings.Url);
-                var content = new StringContent("{\r\n \"size\": " + settings.SearchRecordsLimit + ",    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
+                using HttpRequestMessage request = new(HttpMethod.Post, settings.Url);
+                using StringContent content = new("{\r\n \"size\": " + settings.SearchRecordsLimit + ",    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + searchQuery.Keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
                 request.Content = content;
-                var response = await client.SendAsync(request);
-                response.EnsureSuccessStatusCode();
-                var responseJson = await response.Content.ReadAsStringAsync();
-
-                dynamic responseObject = JObject.Parse(responseJson);
-                dynamic hits = responseObject.hits.hits;
-
-                Dictionary<string, ExpertMetrics> experts = new();
-                foreach (var subhit in hits)
+                using (var response = await client.SendAsync(request))
                 {
-                    foreach (var author in subhit._source.authors)
+                    response.EnsureSuccessStatusCode();
+                    var responseJson = await response.Content.ReadAsStringAsync();
+
+                    dynamic responseObject = JObject.Parse(responseJson);
+                    dynamic hits = responseObject.hits.hits;
+
+                    Dictionary<string, ExpertMetrics> experts = new();
+                    foreach (var subhit in hits)
                     {
-                        string firstName = author.first_name;
-                        string lastName = author.last_name;
-                        string identifier = author.identifier;
-                        string key = firstName + ":" + lastName;
-                        if (!string.IsNullOrEmpty(identifier))
+                        foreach (var author in subhit._source.authors)
                         {
-                            key += ":" + identifier;
-                        }
-
-
-                        string score = subhit._score;
-                        score = score[1..^1];
-                        float relevancy = float.Parse(score, CultureInfo.InvariantCulture);
-
-                        if (experts.ContainsKey(key))
-                        {
-                            experts[key].AddToRelevancySum(relevancy);
-                            experts[key].IncrementPublicationsCount();
-                        }
-                        else
-                        {
-                            var expert = new ExpertMetrics(firstName, lastName, identifier);
-                            if (experts.TryAdd(key, expert))
+                            string firstName = author.first_name;
+                            string lastName = author.last_name;
+                            string identifier = author.identifier;
+                            string key = firstName + ":" + lastName;
+                            if (!string.IsNullOrEmpty(identifier))
                             {
-                                if (subhit._score != null)
-                                {
-                                    experts[key].AddToRelevancySum(relevancy);
-                                }
+                                key += ":" + identifier;
+                            }
 
+
+                            string score = subhit._score;
+                            score = score[1..^1];
+                            float relevancy = float.Parse(score, CultureInfo.InvariantCulture);
+
+                            if (experts.ContainsKey(key))
+                            {
+                                experts[key].AddToRelevancySum(relevancy);
                                 experts[key].IncrementPublicationsCount();
                             }
+                            else
+                            {
+                                var expert = new ExpertMetrics(firstName, lastName, identifier);
+                                if (experts.TryAdd(key, expert))
+                                {
+                                    if (subhit._score != null)
+                                    {
+                                        experts[key].AddToRelevancySum(relevancy);
+                                    }
+
+                                    experts[key].IncrementPublicationsCount();
+                                }
+                            }
                         }
+
                     }
 
-                }
-                List<ExpertMetrics> results = new List<ExpertMetrics>();
-                foreach (var expert in experts)
-                {
-                    results.Add(expert.Value);
-                }
+                    List<ExpertMetrics> results = new();
+                    foreach (var expert in experts)
+                    {
+                        results.Add(expert.Value);
+                    }
 
-                return new JsonResult(
-                    results,
-                    new JsonSerializerOptions { PropertyNamingPolicy = null }
-                );
+                    // Order the results based on the query parameter:
+                    switch (searchQuery.OrderBy)
+                    {
+                        case SearchResultsOrdering.Relevancy:
+                            results.Sort((p1, p2) => p1.RelevancySum.CompareTo(p2.RelevancySum));
+                            break;
+                        case SearchResultsOrdering.Publications:
+                        default:
+                            results.Sort((p1, p2) => p1.PublicationsCount.CompareTo(p2.PublicationsCount));
+                            break;
+                    }
+
+                    // Return the paginated results:
+                    int pageStartIndex = limitOffset.Offset * limitOffset.Limit;
+                    int pageEndIndex = pageStartIndex + limitOffset.Limit - 1;
+                    if (pageEndIndex < results.Count)
+                    {
+                        return new JsonResult(
+                        results.GetRange(pageStartIndex, pageEndIndex - 1),
+                        new JsonSerializerOptions { PropertyNamingPolicy = null }
+                        );
+                    }
+                    else
+                    {
+                        return new JsonResult(
+                        results,
+                        new JsonSerializerOptions { PropertyNamingPolicy = null }
+                    );
+                    }
+                }
             }
             catch (Exception exception)
             {
@@ -139,21 +163,16 @@ namespace Doyen.API.Controllers
             }
         }
 
-        // TODO: Pagination
         [HttpGet("{identifier}/collaborators")]
         [ProducesDefaultResponseType]
         [ProducesResponseType(typeof(List<Expert>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<Expert>> GetCollaboratorsForExpertById([FromRoute] string identifier, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+        public ActionResult<List<Expert>> GetCollaboratorsForExpertById([FromRoute] string identifier, [FromQuery] PaginationModel limitOffset)
         {
             try
             {
-                if (!AreLimitAndOffsetValid(limit, offset))
-                {
-                    return BadRequest();
-                }
 
                 var results = new List<Expert>();
 
@@ -174,16 +193,6 @@ namespace Doyen.API.Controllers
         private Expert CreateRandomExpert()
         {
             return new Expert("Expert", Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
-        }
-
-
-        private bool AreLimitAndOffsetValid(int limit, int offset)
-        {
-            if (limit <= 0 || offset < 0)
-            {
-                return false;
-            }
-            return true;
         }
     }
 }

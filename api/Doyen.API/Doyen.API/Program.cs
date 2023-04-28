@@ -42,7 +42,8 @@ builder.Services.AddSwaggerGen(c =>
             Url = new Uri("https://todo.com"),
         },
     });
-
+    c.DescribeAllParametersInCamelCase();
+    c.UseInlineDefinitionsForEnums();
     c.CustomOperationIds(apiDesc =>
     {
         return apiDesc.TryGetMethodInfo(out MethodInfo methodInfo) ? methodInfo.Name : null;
