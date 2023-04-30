@@ -11,5 +11,7 @@ namespace Doyen.API.Models
 
         [EnumDataType(typeof(SearchResultsOrdering))]
         public SearchResultsOrdering OrderBy { get; set; } = SearchResultsOrdering.Relevancy;
+
+        public bool OrderDescending { get; set; } = true;
     }
 }

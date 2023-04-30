@@ -49,7 +49,8 @@ namespace Doyen.API.Controllers
                 string authorizationHeader = $"Basic {encoded}";
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
                 using HttpRequestMessage request = new(HttpMethod.Post, settings.Url);
-                using StringContent content = new("{\r\n \"size\": " + settings.SearchRecordsLimit + ",    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + searchQuery.Keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
+                //using StringContent content = new("{\r\n \"size\": " + settings.SearchRecordsLimit + ",    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + searchQuery.Keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
+                using StringContent content = new("{\r\n  \"query\": {\r\n    \"bool\": {\r\n      \"must\": [\r\n        {\r\n          \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n              \"title\",\r\n              \"abstract\",\r\n              \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + searchQuery.Keywords + "\"\r\n          }\r\n        }\r\n      ]\r\n    }\r\n  },\r\n  \"size\":" + settings.SearchRecordsLimit + ",\r\n  \"aggs\": {\r\n    \"authors\": {\r\n      \"terms\": {\r\n        \"script\": {\r\n          \"source\": \"\\n            def first = ''; \\n            def last = ''; \\n            if (doc['authors.first_name.keyword'].size() > 0) { \\n              first = doc['authors.first_name.keyword'].value; \\n            } \\n            if (doc['authors.last_name.keyword'].size() > 0) { \\n              last = doc['authors.last_name.keyword'].value; \\n            } \\n            return first + ' ' + last; \\n          \",\"lang\": \"painless\"\r\n        },\r\n        \"size\":" + settings.SearchRecordsLimit + "\r\n      }\r\n    }\r\n  }\r\n}\r\n", null, "application/json");
                 request.Content = content;
                 using (var response = await client.SendAsync(request))
                 {
@@ -119,6 +120,10 @@ namespace Doyen.API.Controllers
                         default:
                             results.Sort((p1, p2) => p2.PublicationsCount.CompareTo(p1.PublicationsCount));
                             break;
+                    }
+                    if (!searchQuery.OrderDescending)
+                    {
+                        results.Reverse();
                     }
 
                     // Return the paginated results:
