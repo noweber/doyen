@@ -2,15 +2,21 @@
 {
     public class ExpertDetails : Expert
     {
-        public ExpertDetails(string firstName, string lastName, string? identifier, string? institution) : base(firstName, lastName, identifier)
+        public ExpertDetails(string firstName, string lastName, string? identifier, List<Publication>? publications = null) : base(firstName, lastName, identifier)
         {
-            LastKnownInstitution = institution;
+            if (publications != null)
+            {
+                Publications = publications;
+            }
         }
-        public ExpertDetails(string name, string? identifier, string? institution) : base(name, identifier)
+        public ExpertDetails(string name, string? identifier, List<Publication>? publications = null) : base(name, identifier)
         {
-            LastKnownInstitution = institution;
+            if (publications != null)
+            {
+                Publications = publications;
+            }
         }
 
-        public string? LastKnownInstitution { get; set; }
+        public List<Publication>? Publications { get; set; }
     }
 }
