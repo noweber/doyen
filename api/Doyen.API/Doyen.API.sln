@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33502.453
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Doyen.API", "Doyen.API\Doyen.API.csproj", "{45B7C4EF-C016-48F5-8BEF-E6996B6FC777}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45B7C4EF-C016-48F5-8BEF-E6996B6FC777}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45B7C4EF-C016-48F5-8BEF-E6996B6FC777}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45B7C4EF-C016-48F5-8BEF-E6996B6FC777}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45B7C4EF-C016-48F5-8BEF-E6996B6FC777}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {214BA20A-52E2-4B92-AB27-65D6642ED8F5}
+	EndGlobalSection
+EndGlobal
