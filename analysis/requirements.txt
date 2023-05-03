@@ -1,0 +1,6 @@
+networkx
+gilda
+pydantic
+ipython
+matplotlib
+doyen_ingestion
