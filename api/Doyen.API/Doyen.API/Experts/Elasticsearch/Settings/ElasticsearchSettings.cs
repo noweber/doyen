@@ -1,4 +1,4 @@
-﻿namespace Doyen.API.Elasticsearch.Settings
+﻿namespace Doyen.API.Experts.Elasticsearch.Settings
 {
     public class ElasticsearchSettings : IElasticsearchSettings
     {

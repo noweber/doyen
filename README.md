@@ -12,9 +12,7 @@ the instructions for setting up ElasticSearch in the [ingestion pipeline sub-pac
 
 ## Next you will want to set up the REST API 
 
-### API
-
-### Live API
+### URL & Swagger
 https://doyen-api.azurewebsites.net/index.html
 
 #### API Setup Instructions
