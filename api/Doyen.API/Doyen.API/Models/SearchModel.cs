@@ -10,7 +10,7 @@ namespace Doyen.API.Models
         public string? Keywords { get; set; }
 
         [EnumDataType(typeof(SearchResultsOrdering))]
-        public SearchResultsOrdering OrderBy { get; set; } = SearchResultsOrdering.Relevancy;
+        public SearchResultsOrdering OrderBy { get; set; } = SearchResultsOrdering.Citations;
 
         public bool OrderDescending { get; set; } = true;
     }

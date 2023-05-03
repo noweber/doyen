@@ -4,6 +4,7 @@ using Doyen.API.Logging;
 using Doyen.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
+using QuickType;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
@@ -18,6 +19,8 @@ namespace Doyen.API.Controllers
         private readonly IElasticsearchSettings settings;
 
         private readonly ITraceLogger logger;
+
+        private const string DATE_TIME_FORMAT = "yyyy-MM-dd";
 
         public ExpertsController(IElasticsearchSettings elasticsearchSettings, ITraceLogger traceLogger)
         {
@@ -49,10 +52,10 @@ namespace Doyen.API.Controllers
                 string authorizationHeader = $"Basic {encoded}";
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
                 using HttpRequestMessage request = new(HttpMethod.Post, settings.Url);
-    
+
                 //using StringContent content = new("{\r\n \"size\": " + settings.SearchRecordsLimit + ",    \"query\": {\r\n        \"simple_query_string\": {\r\n            \"default_operator\": \"and\",\r\n            \"fields\": [\r\n            \"title\",\r\n            \"abstract\",\r\n            \"mesh_annotations.text\"\r\n            ],\r\n            \"query\": \"" + searchQuery.Keywords + "\"\r\n        }\r\n    }\r\n}", null, "application/json");
                 //using StringContent content = new("{\"size\": " + settings.SearchRecordsLimit + ",\"query\":{\"bool\":{\"must\":[{\"simple_query_string\":{\"default_operator\":\"and\",\"fields\":[\"title\",\"abstract\",\"mesh_annotations.text\"],\"query\":\"" + searchQuery.Keywords + "\"}}]}}}", null, "application/json");
-                using StringContent content = new("{\"size\": " + settings.SearchRecordsLimit + ",\"query\":{\"bool\":{\"must\":[{\"simple_query_string\":{\"default_operator\":\"and\",\"fields\":[\"title\",\"abstract\",\"mesh_annotations.text\"],\"query\":\"" + searchQuery.Keywords + "\"}},{\"range\":{\"publication_date\":{\"gte\":\"" + timeRange.GreaterThan.ToString(TimeRangeModel.DATE_TIME_FORMAT) + "\",\"lte\":\"" + timeRange.LessThan.ToString(TimeRangeModel.DATE_TIME_FORMAT) + "\"}}}]}}}", null, "application/json");
+                using StringContent content = new("{\"size\": " + settings.SearchRecordsLimit + ",\"query\":{\"bool\":{\"must\":[{\"simple_query_string\":{\"default_operator\":\"and\",\"fields\":[\"title\",\"abstract\",\"mesh_annotations.text\"],\"query\":\"" + searchQuery.Keywords + "\"}},{\"range\":{\"publication_date\":{\"gte\":\"" + timeRange.GreaterThan.ToString(DATE_TIME_FORMAT) + "\",\"lte\":\"" + timeRange.LessThan.ToString(DATE_TIME_FORMAT) + "\"}}}]}}}", null, "application/json");
                 request.Content = content;
                 using (var response = await client.SendAsync(request))
                 {
@@ -71,15 +74,9 @@ namespace Doyen.API.Controllers
                             string firstName = author.first_name;
                             string lastName = author.last_name;
                             string identifier = author.identifier;
-                            if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
+                            var key = GetKeyByFirstNameLastNameAndIdentifier(firstName, lastName, identifier);
+                            if (!string.IsNullOrEmpty(key))
                             {
-                                string key = firstName + ":" + lastName;
-                                if (!string.IsNullOrEmpty(identifier))
-                                {
-                                    key += ":" + identifier;
-                                }
-
-
                                 string score = subhit._score;
                                 score = score[1..^1];
                                 float relevancy = float.Parse(score, CultureInfo.InvariantCulture);
@@ -108,6 +105,34 @@ namespace Doyen.API.Controllers
 
                     }
 
+                    // Calculate the citations count for each author's publications:
+                    List<Publication> publications = GetPublicationsFromSubhits(hits);
+                    foreach (var expert in experts)
+                    {
+                        if (publications != null)
+                        {
+                            foreach (var publication in publications)
+                            {
+                                if (publication != null && publication.Authors != null)
+                                {
+                                    foreach (var author in publication.Authors)
+                                    {
+                                        //string authorKey = GetKeyByFirstNameLastNameAndIdentifier(author.Name, author.Name, author.Identifier);
+                                        //string expertKey = GetKeyByFirstNameLastNameAndIdentifier(author.Name, author.Name, author.Identifier);
+                                        if (string.Equals(author.Name, expert.Value.Name))
+                                        {
+                                            if (string.IsNullOrEmpty(expert.Value.Identifier) ||
+                                                (!string.IsNullOrEmpty(expert.Value.Identifier) && string.Equals(author.Identifier, expert.Value.Identifier)))
+                                            {
+                                                expert.Value.AddToCitationsCount(publication.CitationsCount);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     List<ExpertMetrics> results = new();
                     foreach (var expert in experts)
                     {
@@ -119,6 +144,9 @@ namespace Doyen.API.Controllers
                     {
                         case SearchResultsOrdering.Relevancy:
                             results.Sort((p1, p2) => p2.RelevancySum.CompareTo(p1.RelevancySum));
+                            break;
+                        case SearchResultsOrdering.Citations:
+                            results.Sort((p1, p2) => p2.CitationsCount.CompareTo(p1.CitationsCount));
                             break;
                         case SearchResultsOrdering.Publications:
                         default:
@@ -156,20 +184,18 @@ namespace Doyen.API.Controllers
             }
         }
 
-
-
-        private HashSet<string> GetAuthorKeysFromSubhitSource(dynamic source)
+        private string GetKeyByFirstNameLastNameAndIdentifier(string firstName, string lastName, string identifier)
         {
-            HashSet<string> results = new();
-            foreach (var author in source.authors)
+            string result = string.Empty;
+            if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
             {
-                var authorKey = GetAuthorKeyFromSourceAuthor(author);
-                if (authorKey != null && !results.Contains(authorKey))
+                result = firstName + ":" + lastName;
+                if (!string.IsNullOrEmpty(identifier))
                 {
-                    results.Add(authorKey);
+                    result += ":" + identifier;
                 }
             }
-            return results;
+            return result;
         }
 
         private string? GetAuthorKeyFromSourceAuthor(dynamic author)
@@ -194,7 +220,37 @@ namespace Doyen.API.Controllers
             List<Publication> results = new();
             foreach (var subhit in subhits)
             {
-                results.Add(GetPublicationFromSubhitsSource(subhit._source));
+                if (subhit != null && subhit._source != null)
+                {
+                    results.Add(GetPublicationFromSubhitsSource(subhit._source));
+
+                }
+            }
+
+            Dictionary<string, int> citationsCountByPubMedId = new Dictionary<string, int>();
+            foreach (var publication in results)
+            {
+                if (publication.PubMedId != null)
+                {
+                    if (citationsCountByPubMedId.ContainsKey(publication.PubMedId))
+                    {
+                        citationsCountByPubMedId[publication.PubMedId] += 1;
+                    }
+                    else
+                    {
+                        citationsCountByPubMedId.TryAdd(publication.PubMedId, 1);
+                    }
+                }
+            }
+            foreach (var publication in results)
+            {
+                if (publication.PubMedId != null)
+                {
+                    if (citationsCountByPubMedId.ContainsKey(publication.PubMedId))
+                    {
+                        publication.CitationsCount = citationsCountByPubMedId[publication.PubMedId];
+                    }
+                }
             }
             return results;
         }
@@ -204,10 +260,26 @@ namespace Doyen.API.Controllers
             string pubMedId = string.Empty;
             if (source.pmid != null)
             {
-                pubMedId = source.pmid;//;[1..^1];
+                pubMedId = source.pmid;
             }
             var experts = GetExpertsFromHitSourceAuthors(source.authors);
-            return new Publication(pubMedId, experts);
+            string publicationDate = string.Empty;
+            if (source.publication_date != null)
+            {
+                publicationDate = source.publication_date;
+            }
+            List<string> references = new List<string>();
+            if (source.references != null)
+            {
+                foreach(var reference in source.references)
+                {
+                    if(reference != null)
+                    {
+                        references.Add(reference.ToString());
+                    }
+                }
+            }
+            return new Publication(pubMedId, experts, publicationDate, references);
         }
 
         private List<Expert> GetExpertsFromHitSourceAuthors(dynamic authors)
