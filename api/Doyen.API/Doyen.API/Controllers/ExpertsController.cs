@@ -4,7 +4,6 @@ using Doyen.API.Logging;
 using Doyen.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using QuickType;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
@@ -271,9 +270,9 @@ namespace Doyen.API.Controllers
             List<string> references = new List<string>();
             if (source.references != null)
             {
-                foreach(var reference in source.references)
+                foreach (var reference in source.references)
                 {
-                    if(reference != null)
+                    if (reference != null)
                     {
                         references.Add(reference.ToString());
                     }
@@ -409,6 +408,7 @@ namespace Doyen.API.Controllers
             try
             {
                 Dictionary<Expert, int> collaborationCounts = new();
+                HashSet<string> collaboratorsSeen = new();
                 var expertDetails = await GetExpertDetailsByIdentifier(identifier);
                 if (expertDetails != null && expertDetails.Publications != null)
                 {
