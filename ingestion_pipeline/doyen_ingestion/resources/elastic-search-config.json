@@ -1,0 +1,93 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "properties": {
+      "pmid": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "abstract": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "publication_date": {
+        "type": "date",
+        "format": "yyyy-MM-dd"
+      },
+      "authors": {
+        "properties": {
+          "last_name": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "first_name": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "identifiers": {
+            "type": "text"
+          },
+          "affiliations": {
+            "properties": {
+              "affiliation": {
+                "type": "text"
+              },
+              "identifiers": {
+                "type": "text"
+              }
+            }
+          }
+        }
+      },
+      "mesh_annotations": {
+        "properties": {
+          "mesh": {
+            "type": "text"
+          },
+          "text": {
+            "type": "text"
+          },
+          "major_topic": {
+            "type": "boolean"
+          },
+          "qualifiers": {
+            "type": "nested",
+            "properties": {
+              "mesh": {
+                "type": "text"
+              },
+              "text": {
+                "type": "text"
+              }
+            }
+          }
+        }
+      },
+      "references": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      }
+    }
+  }
+}
