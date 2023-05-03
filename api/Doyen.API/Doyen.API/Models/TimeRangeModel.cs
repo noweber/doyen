@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Doyen.API.Models
+﻿namespace Doyen.API.Models
 {
     public class TimeRangeModel
     {

@@ -1,4 +1,4 @@
-﻿using Doyen.API.Elasticsearch.Settings;
+﻿using Doyen.API.Experts.Elasticsearch.Settings;
 
 namespace Doyen.API
 {

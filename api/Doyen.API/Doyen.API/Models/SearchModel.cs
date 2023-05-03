@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Converters;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace Doyen.API.Models
 {
