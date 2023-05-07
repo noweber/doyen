@@ -65,7 +65,6 @@ builder.Services.AddApplicationInsightsTelemetry(applicationInsightsInstrumentat
 TelemetryConfiguration telemetryConfiguration = new TelemetryConfiguration(applicationInsightsInstrumentationKey);
 builder.Services.AddScoped<ITraceLogger, ApplicationInsightsLogger>(context => new ApplicationInsightsLogger(telemetryConfiguration));
 
-
 var app = builder.Build();
 app.UseSwagger();
 if (app.Environment.IsDevelopment())
