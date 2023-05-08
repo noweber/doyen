@@ -1,4 +1,7 @@
 using Doyen.API;
+using Doyen.API.Experts;
+using Doyen.API.Experts.Elasticsearch;
+using Doyen.API.Experts.Elasticsearch.Http;
 using Doyen.API.Logging;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.OpenApi.Models;
@@ -37,9 +40,8 @@ builder.Services.AddSwaggerGen(c =>
         Description = appTitle + " REST API",
         Contact = new OpenApiContact
         {
-            Name = "TBD",
-            Email = "TBD@todo.com",
-            Url = new Uri("https://todo.com"),
+            Name = "Doyen Team",
+            Url = new Uri("https://github.com/DoyenTeam/doyen"),
         },
     });
     c.DescribeAllParametersInCamelCase();
@@ -54,6 +56,8 @@ builder.Services.AddSwaggerGen(c =>
 
 // Elasticsearch Dependencies:
 builder.Services.AddSingleton(Startup.GetElasticsearchSettings(builder));
+builder.Services.AddScoped<IElasticsearchHttpClient, ElasticsearchHttpClient>();
+builder.Services.AddScoped<IExpertSearcher, ElasticsearchPublicationSearcher>();
 
 // Configure Application Insights Dependencies:
 string applicationInsightsInstrumentationKey = builder.Configuration.GetSection("ApplicationInsights")["InstrumentationKey"];
