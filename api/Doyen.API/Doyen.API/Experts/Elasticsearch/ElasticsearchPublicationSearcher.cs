@@ -1,8 +1,8 @@
-﻿using Doyen.API.Dtos;
+﻿using Doyen.API.Dtos.Requests;
+using Doyen.API.Dtos.Responses;
 using Doyen.API.Experts.Elasticsearch.Http;
 using Doyen.API.Experts.Elasticsearch.Settings;
 using Doyen.API.Logging;
-using Doyen.API.Models;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
 
@@ -22,7 +22,7 @@ namespace Doyen.API.Experts.Elasticsearch
             elasticHttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
-        public List<ExpertMetrics> GetExpertMetricsByKeywords(SearchModel searchQuery, TimeRangeModel timeRange)
+        public List<ExpertMetricsDtos> GetExpertMetricsByKeywords(SearchDto searchQuery, TimeRangeDto timeRange)
         {
             string requestJson =
             "{\"size\": " + settings.SearchRecordsLimit + ",\"query\":{\"bool\":{\"must\":[{\"simple_query_string\":{\"default_operator\":\"and\",\"fields\":[\"title\",\"abstract\",\"mesh_annotations.text\"],\"query\":\"" + searchQuery.Keywords + "\"}},{\"range\":{\"publication_date\":{\"gte\":\"" + timeRange.GreaterThan.ToString(DATE_TIME_FORMAT) + "\",\"lte\":\"" + timeRange.LessThan.ToString(DATE_TIME_FORMAT) + "\"}}}]}}}";
@@ -30,7 +30,7 @@ namespace Doyen.API.Experts.Elasticsearch
             dynamic responseObject = JObject.Parse(responseJson);
             dynamic hits = responseObject.hits.hits;
 
-            Dictionary<string, ExpertMetrics> experts = new();
+            Dictionary<string, ExpertMetricsDtos> experts = new();
             foreach (var subhit in hits)
             {
 
@@ -54,7 +54,7 @@ namespace Doyen.API.Experts.Elasticsearch
                         }
                         else
                         {
-                            var expert = new ExpertMetrics(firstName, lastName, identifier);
+                            var expert = new ExpertMetricsDtos(firstName, lastName, identifier);
                             if (experts.TryAdd(key, expert))
                             {
                                 if (subhit._score != null)
@@ -71,7 +71,7 @@ namespace Doyen.API.Experts.Elasticsearch
             }
 
             // Calculate the citations count for each author's publications:
-            List<Publication> publications = GetPublicationsFromSubhits(hits);
+            List<PublicationDto> publications = GetPublicationsFromSubhits(hits);
             foreach (var expert in experts)
             {
                 if (publications != null)
@@ -98,7 +98,7 @@ namespace Doyen.API.Experts.Elasticsearch
                 }
             }
 
-            List<ExpertMetrics> results = new();
+            List<ExpertMetricsDtos> results = new();
             foreach (var expert in experts)
             {
                 results.Add(expert.Value);
@@ -107,23 +107,23 @@ namespace Doyen.API.Experts.Elasticsearch
             return results;
         }
 
-        public ExpertDetails GetExpertDetailsByIdentifier(string identifier)
+        public ExpertDetailsDto GetExpertDetailsByIdentifier(string identifier)
         {
             string requestJson = "{\"query\":{\"bool\":{\"should\":[{\"term\":{\"authors.identifier.keyword\":{\"value\":\"" + identifier + "\"}}},{\"terms\":{\"authors.identifier.keyword\":[\"" + identifier + "\"]}}]}}}";
             string responseJson = elasticHttpClient.SendSearchPostRequest(requestJson).Result;
             return GetExpertDetailsByIdentifierFromElasticSearchDocumentsJson(responseJson, identifier);
         }
 
-        private ExpertDetails GetExpertDetailsByIdentifierFromElasticSearchDocumentsJson(string documentsJson, string identifier)
+        private ExpertDetailsDto GetExpertDetailsByIdentifierFromElasticSearchDocumentsJson(string documentsJson, string identifier)
         {
             dynamic responseObject = JObject.Parse(documentsJson);
             dynamic hits = responseObject.hits.hits;
             var publications = GetPublicationsFromSubhits(hits);
             var expert = GetExpertByIdFromSubhits(hits, identifier);
-            return new ExpertDetails(expert.Name, identifier, publications);
+            return new ExpertDetailsDto(expert.Name, identifier, publications);
         }
 
-        public List<Collaborator> GetCollaboratorsByExpertIdentifer(string identifer)
+        public List<CollaboratorDto> GetCollaboratorsByExpertIdentifer(string identifer)
         {
             throw new NotImplementedException();
         }
@@ -159,9 +159,9 @@ namespace Doyen.API.Experts.Elasticsearch
             return key;
         }
 
-        private List<Publication> GetPublicationsFromSubhits(dynamic subhits)
+        private List<PublicationDto> GetPublicationsFromSubhits(dynamic subhits)
         {
-            List<Publication> results = new();
+            List<PublicationDto> results = new();
             foreach (var subhit in subhits)
             {
                 if (subhit != null && subhit._source != null)
@@ -199,7 +199,7 @@ namespace Doyen.API.Experts.Elasticsearch
             return results;
         }
 
-        private Publication GetPublicationFromSubhitsSource(dynamic source)
+        private PublicationDto GetPublicationFromSubhitsSource(dynamic source)
         {
             string pubMedId = string.Empty;
             if (source.pmid != null)
@@ -223,12 +223,12 @@ namespace Doyen.API.Experts.Elasticsearch
                     }
                 }
             }
-            return new Publication(pubMedId, experts, publicationDate, references);
+            return new PublicationDto(pubMedId, experts, publicationDate, references);
         }
 
-        private List<Expert> GetExpertsFromHitSourceAuthors(dynamic authors)
+        private List<ExpertDto> GetExpertsFromHitSourceAuthors(dynamic authors)
         {
-            List<Expert> results = new();
+            List<ExpertDto> results = new();
             foreach (var author in authors)
             {
                 results.Add(GetExpertFromAuthor(author));
@@ -236,7 +236,7 @@ namespace Doyen.API.Experts.Elasticsearch
             return results;
         }
 
-        private Expert GetExpertFromAuthor(dynamic author)
+        private ExpertDto GetExpertFromAuthor(dynamic author)
         {
             string? firstName = null;
             if (author.first_name != null)
@@ -253,10 +253,10 @@ namespace Doyen.API.Experts.Elasticsearch
             {
                 identifier = author.identifier;
             }
-            return new Expert(firstName, lastName, identifier);
+            return new ExpertDto(firstName, lastName, identifier);
         }
 
-        private Expert GetExpertByIdFromSubhits(dynamic subhits, string identifier)
+        private ExpertDto GetExpertByIdFromSubhits(dynamic subhits, string identifier)
         {
             foreach (var subhit in subhits)
             {
@@ -280,7 +280,7 @@ namespace Doyen.API.Experts.Elasticsearch
                         {
                             id = author.identifier;
                         }
-                        return new Expert(firstName, lastName, id);
+                        return new ExpertDto(firstName, lastName, id);
                     }
                 }
             }
