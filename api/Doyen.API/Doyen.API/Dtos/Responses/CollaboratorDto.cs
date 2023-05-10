@@ -6,6 +6,8 @@
     /// </summary>
     public class CollaboratorDto : ExpertDto
     {
+        public CollaboratorDto() { }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="CollaboratorDto"/> class with the specified parameters.
         /// </summary>

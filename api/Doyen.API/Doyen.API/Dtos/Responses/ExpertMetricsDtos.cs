@@ -2,6 +2,8 @@
 {
     public class ExpertMetricsDtos : ExpertDto
     {
+        public ExpertMetricsDtos() { }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ExpertMetricsDtos"/> class with the specified first name, last name, and identifier.
         /// </summary>
@@ -15,17 +17,17 @@
         /// <summary>
         /// Gets the count of publications.
         /// </summary>
-        public int PublicationsCount { get; private set; }
+        public int PublicationsCount { get; set; }
 
         /// <summary>
         /// Gets the count of citations.
         /// </summary>
-        public int CitationsCount { get; private set; }
+        public int CitationsCount { get; set; }
 
         /// <summary>
         /// Gets the sum of relevancy values.
         /// </summary>
-        public float RelevancySum { get; private set; }
+        public float RelevancySum { get; set; }
 
         /// <summary>
         /// Increments the count of publications by 1.

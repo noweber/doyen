@@ -1,9 +1,11 @@
 ﻿using Doyen.API.Experts.Elasticsearch.Settings;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Text;
 
 namespace Doyen.API.Experts.Elasticsearch.Http
 {
+    [ExcludeFromCodeCoverage]
     /// <summary>
     /// Represents an HTTP client for making requests to Elasticsearch.
     /// </summary>

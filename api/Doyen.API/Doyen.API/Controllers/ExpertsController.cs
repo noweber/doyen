@@ -127,44 +127,7 @@ namespace Doyen.API.Controllers
         {
             try
             {
-                // Initialize collaboration counts and collaborators seen
-                Dictionary<ExpertDto, int> collaborationCounts = new();
-                HashSet<string> collaboratorsSeen = new();
-
-                // Retrieve expert details by the provided identifier
-                var expertDetails = searcher.GetExpertDetailsByIdentifier(identifier);
-
-                if (expertDetails != null && expertDetails.Publications != null)
-                {
-                    // Count the collaborations for each publication and author
-                    foreach (var publication in expertDetails.Publications)
-                    {
-                        if (publication.Authors != null)
-                        {
-                            foreach (var author in publication.Authors)
-                            {
-                                if (author != null)
-                                {
-                                    if (collaborationCounts.ContainsKey(author))
-                                    {
-                                        collaborationCounts[author] += 1;
-                                    }
-                                    else
-                                    {
-                                        collaborationCounts.TryAdd(author, 1);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Create a list of collaborators sorted by the number of collaborations
-                List<CollaboratorDto> collaborators = new List<CollaboratorDto>();
-                foreach (var entry in collaborationCounts)
-                {
-                    collaborators.Add(new CollaboratorDto(entry.Key, entry.Value));
-                }
+                List<CollaboratorDto> collaborators = searcher.GetCollaboratorsByExpertIdentifer(identifier);
                 collaborators.Sort((p1, p2) => p2.NumberOfCollaborations.CompareTo(p1.NumberOfCollaborations));
 
                 return new JsonResult(

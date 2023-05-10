@@ -5,6 +5,8 @@
     /// </summary>
     public class ExpertDetailsDto : ExpertDto
     {
+        public ExpertDetailsDto() { }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ExpertDetailsDto"/> class with the specified parameters.
         /// </summary>

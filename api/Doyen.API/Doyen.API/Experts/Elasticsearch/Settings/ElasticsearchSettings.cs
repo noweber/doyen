@@ -1,5 +1,8 @@
-﻿namespace Doyen.API.Experts.Elasticsearch.Settings
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Doyen.API.Experts.Elasticsearch.Settings
 {
+    [ExcludeFromCodeCoverage]
     /// <summary>
     /// Represents the Elasticsearch settings.
     /// </summary>

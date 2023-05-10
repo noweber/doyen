@@ -2,7 +2,6 @@
 using Doyen.API.Dtos.Responses;
 using Doyen.API.Experts.Elasticsearch.Http;
 using Doyen.API.Experts.Elasticsearch.Settings;
-using Doyen.API.Logging;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
 
@@ -16,7 +15,7 @@ namespace Doyen.API.Experts.Elasticsearch
 
         private const string DATE_TIME_FORMAT = "yyyy-MM-dd";
 
-        public ElasticsearchPublicationSearcher(IElasticsearchSettings elasticsearchSettings, ITraceLogger traceLogger, IElasticsearchHttpClient httpClient)
+        public ElasticsearchPublicationSearcher(IElasticsearchSettings elasticsearchSettings, IElasticsearchHttpClient httpClient)
         {
             settings = elasticsearchSettings ?? throw new ArgumentNullException(nameof(elasticsearchSettings));
             elasticHttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
@@ -24,6 +23,15 @@ namespace Doyen.API.Experts.Elasticsearch
 
         public List<ExpertMetricsDtos> GetExpertMetricsByKeywords(SearchDto searchQuery, TimeRangeDto timeRange)
         {
+            if (searchQuery == null)
+            {
+                throw new ArgumentNullException(nameof(searchQuery));
+            }
+            if (timeRange == null)
+            {
+                throw new ArgumentNullException(nameof(timeRange));
+            }
+
             string requestJson =
             "{\"size\": " + settings.SearchRecordsLimit + ",\"query\":{\"bool\":{\"must\":[{\"simple_query_string\":{\"default_operator\":\"and\",\"fields\":[\"title\",\"abstract\",\"mesh_annotations.text\"],\"query\":\"" + searchQuery.Keywords + "\"}},{\"range\":{\"publication_date\":{\"gte\":\"" + timeRange.GreaterThan.ToString(DATE_TIME_FORMAT) + "\",\"lte\":\"" + timeRange.LessThan.ToString(DATE_TIME_FORMAT) + "\"}}}]}}}";
             string responseJson = elasticHttpClient.SendSearchPostRequest(requestJson).Result;
@@ -125,7 +133,46 @@ namespace Doyen.API.Experts.Elasticsearch
 
         public List<CollaboratorDto> GetCollaboratorsByExpertIdentifer(string identifer)
         {
-            throw new NotImplementedException();
+            // Retrieve expert details by the provided identifier
+            var expertDetails = GetExpertDetailsByIdentifier(identifer);
+
+            // Initialize collaboration counts and collaborators seen
+            Dictionary<ExpertDto, int> collaborationCounts = new();
+            HashSet<string> collaboratorsSeen = new();
+
+            if (expertDetails != null && expertDetails.Publications != null)
+            {
+                // Count the collaborations for each publication and author
+                foreach (var publication in expertDetails.Publications)
+                {
+                    if (publication.Authors != null)
+                    {
+                        foreach (var author in publication.Authors)
+                        {
+                            if (author != null)
+                            {
+                                if (collaborationCounts.ContainsKey(author))
+                                {
+                                    collaborationCounts[author] += 1;
+                                }
+                                else
+                                {
+                                    collaborationCounts.TryAdd(author, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create a list of collaborators sorted by the number of collaborations
+            List<CollaboratorDto> collaborators = new List<CollaboratorDto>();
+            foreach (var entry in collaborationCounts)
+            {
+                collaborators.Add(new CollaboratorDto(entry.Key, entry.Value));
+            }
+
+            return collaborators;
         }
 
         private string GetKeyByFirstNameLastNameAndIdentifier(string firstName, string lastName, string identifier)

@@ -2,6 +2,8 @@
 {
     public class ExpertDto
     {
+        public ExpertDto() { }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ExpertDto"/> class with the specified first name, last name, and identifier.
         /// </summary>

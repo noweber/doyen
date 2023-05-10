@@ -1,6 +1,5 @@
 ﻿using Doyen.API.Dtos.Requests;
 using Doyen.API.Dtos.Responses;
-using System.Collections.Generic;
 
 namespace Doyen.API.Experts
 {
