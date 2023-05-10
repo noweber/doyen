@@ -1,7 +1,7 @@
-﻿using Doyen.API.Dtos;
+﻿using Doyen.API.Dtos.Requests;
+using Doyen.API.Dtos.Responses;
 using Doyen.API.Experts;
 using Doyen.API.Logging;
-using Doyen.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -17,21 +17,27 @@ namespace Doyen.API.Controllers
 
         public ExpertsController(IExpertSearcher expertSearcher, ITraceLogger traceLogger)
         {
+            // Assign the expert searcher and trace logger dependencies
             searcher = expertSearcher ?? throw new ArgumentNullException(nameof(searcher));
             logger = traceLogger ?? throw new ArgumentNullException(nameof(traceLogger));
         }
 
+        /// <summary>
+        /// Retrieves a list of experts based on the search criteria.
+        /// </summary>
+        /// <param name="searchQuery">The search criteria.</param>
+        /// <param name="limitOffset">Pagination parameters.</param>
+        /// <param name="timeRange">Time range parameters.</param>
         [HttpGet("search")]
         [ProducesDefaultResponseType]
-        [ProducesResponseType(typeof(List<ExpertMetrics>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<ExpertMetricsDtos>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<ExpertMetrics>> GetExpertsSearchAsync([FromQuery] SearchModel searchQuery, [FromQuery] PaginationModel limitOffset, [FromQuery] TimeRangeModel timeRange)
+        public ActionResult<List<ExpertMetricsDtos>> GetExpertsSearchAsync([FromQuery] SearchDto searchQuery, [FromQuery] PaginationDto limitOffset, [FromQuery] TimeRangeDto timeRange)
         {
             try
             {
-                List<ExpertMetrics> results = searcher.GetExpertMetricsByKeywords(searchQuery, timeRange);
+                List<ExpertMetricsDtos> results = searcher.GetExpertMetricsByKeywords(searchQuery, timeRange);
 
                 // Order the results based on the query parameter:
                 switch (searchQuery.OrderBy)
@@ -47,6 +53,7 @@ namespace Doyen.API.Controllers
                         results.Sort((p1, p2) => p2.PublicationsCount.CompareTo(p1.PublicationsCount));
                         break;
                 }
+
                 if (!searchQuery.OrderDescending)
                 {
                     results.Reverse();
@@ -55,64 +62,81 @@ namespace Doyen.API.Controllers
                 // Return the paginated results:
                 int pageStartIndex = limitOffset.Offset * limitOffset.Limit;
                 int pageEndIndex = pageStartIndex + limitOffset.Limit - 1;
+
                 if (pageEndIndex < results.Count)
                 {
                     return new JsonResult(
-                    results.GetRange(pageStartIndex, pageEndIndex - 1),
-                    new JsonSerializerOptions { PropertyNamingPolicy = null }
+                        results.GetRange(pageStartIndex, pageEndIndex - 1),
+                        new JsonSerializerOptions { PropertyNamingPolicy = null }
                     );
                 }
                 else
                 {
                     return new JsonResult(
-                    results,
-                    new JsonSerializerOptions { PropertyNamingPolicy = null }
-                );
+                        results,
+                        new JsonSerializerOptions { PropertyNamingPolicy = null }
+                    );
                 }
             }
             catch (Exception exception)
             {
+                // Log any exceptions that occur
                 logger.TraceException(exception);
                 return StatusCode(500);
             }
         }
 
 
+        /// <summary>
+        /// Retrieves details of an expert by their identifier.
+        /// </summary>
+        /// <param name="identifier">The identifier of the expert.</param>
         [HttpGet("{identifier}")]
         [ProducesDefaultResponseType]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<ExpertDetails> GetExpertDetailsById([FromRoute] string identifier)
+        public ActionResult<ExpertDetailsDto> GetExpertDetailsById([FromRoute] string identifier)
         {
             try
             {
-                return new JsonResult(searcher.GetExpertDetailsByIdentifier(identifier),
-                new JsonSerializerOptions { PropertyNamingPolicy = null }
+                // Retrieve expert details by the provided identifier
+                ExpertDetailsDto expertDetails = searcher.GetExpertDetailsByIdentifier(identifier);
+
+                return new JsonResult(expertDetails,
+                    new JsonSerializerOptions { PropertyNamingPolicy = null }
                 );
             }
             catch (Exception exception)
             {
+                // Log any exceptions that occur
                 logger.TraceException(exception);
                 return StatusCode(500);
             }
         }
 
+        /// <summary>
+        /// Retrieves the count of collaborators for an expert based on their identifier.
+        /// </summary>
+        /// <param name="identifier">The identifier of the expert.</param>
         [HttpGet("{identifier}/collaborators")]
         [ProducesDefaultResponseType]
-        [ProducesResponseType(typeof(List<Expert>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<ExpertDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public ActionResult<List<Collaborator>> GetCollaboratorsCountForExpertById([FromRoute] string identifier)
+        public ActionResult<List<CollaboratorDto>> GetCollaboratorsCountForExpertById([FromRoute] string identifier)
         {
             try
             {
-                Dictionary<Expert, int> collaborationCounts = new();
+                // Initialize collaboration counts and collaborators seen
+                Dictionary<ExpertDto, int> collaborationCounts = new();
                 HashSet<string> collaboratorsSeen = new();
+
+                // Retrieve expert details by the provided identifier
                 var expertDetails = searcher.GetExpertDetailsByIdentifier(identifier);
+
                 if (expertDetails != null && expertDetails.Publications != null)
                 {
+                    // Count the collaborations for each publication and author
                     foreach (var publication in expertDetails.Publications)
                     {
                         if (publication.Authors != null)
@@ -134,19 +158,23 @@ namespace Doyen.API.Controllers
                         }
                     }
                 }
-                List<Collaborator> collaborators = new List<Collaborator>();
+
+                // Create a list of collaborators sorted by the number of collaborations
+                List<CollaboratorDto> collaborators = new List<CollaboratorDto>();
                 foreach (var entry in collaborationCounts)
                 {
-                    collaborators.Add(new Collaborator(entry.Key, entry.Value));
+                    collaborators.Add(new CollaboratorDto(entry.Key, entry.Value));
                 }
                 collaborators.Sort((p1, p2) => p2.NumberOfCollaborations.CompareTo(p1.NumberOfCollaborations));
+
                 return new JsonResult(
-                collaborators,
-                new JsonSerializerOptions { PropertyNamingPolicy = null }
+                    collaborators,
+                    new JsonSerializerOptions { PropertyNamingPolicy = null }
                 );
             }
             catch (Exception exception)
             {
+                // Log any exceptions that occur
                 logger.TraceException(exception);
                 return StatusCode(500);
             }
